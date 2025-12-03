@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SensetCategory {
+  OVERWHELM
+  ANXIOUS
+  EMPTY
+  AGITATED
+  BALANCED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  preferredLang String    @default("en")
+  createdAt     DateTime  @default(now())
+  profile       UserProfile?
+  sensetScans   SensetScan[]
+  itineraries   SessionItinerary[]
+  journal       JournalEntry[]
+}
+
+model UserProfile {
+  id       String  @id @default(cuid())
+  userId   String  @unique
+  user     User    @relation(fields: [userId], references: [id])
+  timezone String?
+  goal     String?
+}
+
+model SensetScan {
+  id           String            @id @default(cuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id])
+  createdAt    DateTime          @default(now())
+  energyScore  Int
+  emotionScore Int
+  note         String?
+  category     SensetCategory
+  globalScore  Int
+  itinerary    SessionItinerary?
+}
+
+model Exercise {
+  id               String            @id @default(cuid())
+  title            String
+  description      String
+  type             String           // "breathing", "body_scan", ...
+  durationMin      Int
+  lang             String           // "fr" / "en"
+  targetSensets    SensetCategory[]
+  audioUrl         String
+  sessionExercises SessionExercise[]
+}
+
+model SessionItinerary {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id])
+  sensetId  String  @unique
+  senset    SensetScan        @relation(fields: [sensetId], references: [id])
+  createdAt DateTime          @default(now())
+  status    String            @default("IN_PROGRESS")
+  exercises SessionExercise[]
+  journal   JournalEntry?
+}
+
+model SessionExercise {
+  id                 String            @id @default(cuid())
+  sessionItineraryId String
+  sessionItinerary   SessionItinerary  @relation(fields: [sessionItineraryId], references: [id])
+  exerciseId         String
+  exercise           Exercise          @relation(fields: [exerciseId], references: [id])
+  startedAt          DateTime?
+  completedAt        DateTime?
+  completionRatio    Float?
+}
+
+model JournalEntry {
+  id                 String            @id @default(cuid())
+  userId             String
+  user               User              @relation(fields: [userId], references: [id])
+  sessionItineraryId String? @unique
+  sessionItinerary   SessionItinerary? @relation(fields: [sessionItineraryId], references: [id])
+  createdAt          DateTime          @default(now())
+  rawText            String
+  summary            String?
+  anchor             String?
+  moodAfter          Int?
+}
